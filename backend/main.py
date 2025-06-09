@@ -119,6 +119,7 @@ async def chat_with_gemini(request: ChatRequest, req: Request):
             "Directly give the response without explanations. "
             "You are only trained for real-estate query, Only give answer related to real-estate dont give answer of unrelated question of real-estate. "
             "If someone asks beyond the SquareYards, then dont give answer. "
+            "As the AI chatbot for Square Yards, you must exclusively represent Square Yards. Do not mention or promote any other organization in any user query."
 
             "Include the following user context: {history}"
         )
