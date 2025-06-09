@@ -369,88 +369,17 @@
                     })
                 });
                 const result = await response.json();
-                console.log('OTP Verify Response:', { status: response.status, body: result }); // Detailed logging
-                if (response.status === 200 && result.data && result.data.userExists === true) {
-                    console.log('OTP Verification Successful:', result.data);
+                if (response.status === 200 && result.data && result.data.userExists) {
                     return true;
+                } else if (response.status === 400 && result.message === 'Invalid OTP') {
+                    return false;
                 } else {
-                    const errorMessage = result.message || `Verification failed (Status: ${response.status})`;
-                    console.error('OTP Verification Failed:', errorMessage);
-                    throw new Error(errorMessage);
+                    throw new Error(result.message || 'Unknown error');
                 }
             } catch (error) {
-                console.error('Error verifying OTP:', error.message);
-                throw error;
+                console.error('Error verifying OTP:', error);
+                return false;
             }
-        }
-
-        async function handleTextInput(value, field, validate, errorDiv) {
-            const error = validate ? validate(value) : '';
-            if (error) {
-                errorDiv.textContent = error;
-                return;
-            }
-            clearReminderTimeout();
-            state.data[field] = value;
-
-            if (field === 'otp') {
-                if (state.otpAttempts >= state.maxOtpAttempts) {
-                    errorDiv.textContent = 'Maximum OTP attempts reached. Please resend OTP.';
-                    console.warn('Max OTP attempts reached:', state.otpAttempts);
-                    return;
-                }
-                if (Date.now() - state.otpSentTime > state.otpValidDuration) {
-                    errorDiv.textContent = 'OTP has expired. Please resend OTP.';
-                    console.warn('OTP expired:', { sentTime: state.otpSentTime, currentTime: Date.now() });
-                    return;
-                }
-                state.otpAttempts++;
-                showTypingIndicator();
-                try {
-                    const success = await verifyOtp(state.data.number, value);
-                    removeTypingIndicator();
-                    if (success) {
-                        addUserMessage('****'); // Mask OTP for security
-                        addBotMessage('OTP verified successfully.');
-                        state.isOtpVerified = true; // Track verification state
-                    } else {
-                        errorDiv.textContent = `Invalid OTP. ${state.maxOtpAttempts - state.otpAttempts} attempts remaining.`;
-                        console.warn('Invalid OTP attempt:', state.otpAttempts);
-                        return;
-                    }
-                } catch (error) {
-                    removeTypingIndicator();
-                    errorDiv.textContent = `OTP verification failed: ${error.message}`;
-                    console.error('Verification error displayed:', error.message);
-                    return;
-                }
-            } else if (field === 'number' && !state.isOtpSent) {
-                showTypingIndicator();
-                try {
-                    const success = await sendOtp(value);
-                    removeTypingIndicator();
-                    if (!success) {
-                        errorDiv.textContent = 'Failed to send OTP. Please try again.';
-                        console.warn('OTP send failed');
-                        return;
-                    }
-                    addBotMessage('OTP sent successfully to your phone number.');
-                    state.isOtpSent = true;
-                } catch (error) {
-                    removeTypingIndicator();
-                    errorDiv.textContent = `Failed to send OTP: ${error.message}`;
-                    console.error('Send OTP error:', error.message);
-                    return;
-                }
-            } else {
-                addUserMessage(value);
-            }
-
-            if (field === 'number') {
-                state.data.user_id = value; // Use phone number as user_id
-            }
-
-            proceedToNextStep();
         }
 
         async function sendChatMessage(message) {
