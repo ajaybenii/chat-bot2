@@ -34,7 +34,7 @@
             .chatbot-popup{right:10px;font-size:11px;padding:8px 12px}
         }
         /* #chatbot-window{position:fixed;bottom:80px;right:80px;width:375px;max-height:488px;background:linear-gradient(145deg,#fff,#f7f7f7);border-radius:50px;box-shadow:0 6px 12px #0003;display:none;flex-direction:column;z-index:1000} */
-        #chatbot-window{position:fixed;bottom:110px;right:85px;width:375px;max-height:480px;background-color:#fff;border-radius:10px;box-shadow:0 4px 10px #0003;display:none;flex-direction:column;z-index:1000}
+        #chatbot-window{position:fixed;bottom:65px;right:85px;width:375px;background-color:#fff;border-radius:10px;box-shadow:0 4px 10px #0003;display:none;flex-direction:column;z-index:1000}
         #chatbot-window.open{display:flex}
         #chatbot-window.dark-mode{background:linear-gradient(145deg,#2a2a2a,#333);color:#fff}
         @media (max-width: 600px) {
@@ -53,7 +53,7 @@
         .animation-toggle{position:absolute;top:15px;right:10px;background:none;border:none;color:#fff;font-size:18px;cursor:pointer;transition:transform 0.2s ease}
         .animation-toggle:hover{transform:scale(1.1)}
         .animation-toggle:focus{outline:2px solid #7be0b6}
-        .chatbot-body{flex:1;padding:15px;overflow-y:auto;background:#f7f4ff;max-height:400px}
+        .chatbot-body{flex:1;padding:15px;overflow-y:auto;background:#f7f4ff;max-height:300px}
         .chatbot-body.dark-mode{background:#222}
         .chatbot-body::-webkit-scrollbar{width:8px}
         .chatbot-body::-webkit-scrollbar-thumb{background-color:#333;border-radius:4px}
@@ -369,17 +369,88 @@
                     })
                 });
                 const result = await response.json();
-                if (response.status === 200 && result.data && result.data.userExists) {
+                console.log('OTP Verify Response:', { status: response.status, body: result }); // Detailed logging
+                if (response.status === 200 && result.data && result.data.userExists === true) {
+                    console.log('OTP Verification Successful:', result.data);
                     return true;
-                } else if (response.status === 400 && result.message === 'Invalid OTP') {
-                    return false;
                 } else {
-                    throw new Error(result.message || 'Unknown error');
+                    const errorMessage = result.message || `Verification failed (Status: ${response.status})`;
+                    console.error('OTP Verification Failed:', errorMessage);
+                    throw new Error(errorMessage);
                 }
             } catch (error) {
-                console.error('Error verifying OTP:', error);
-                return false;
+                console.error('Error verifying OTP:', error.message);
+                throw error;
             }
+        }
+
+        async function handleTextInput(value, field, validate, errorDiv) {
+            const error = validate ? validate(value) : '';
+            if (error) {
+                errorDiv.textContent = error;
+                return;
+            }
+            clearReminderTimeout();
+            state.data[field] = value;
+
+            if (field === 'otp') {
+                if (state.otpAttempts >= state.maxOtpAttempts) {
+                    errorDiv.textContent = 'Maximum OTP attempts reached. Please resend OTP.';
+                    console.warn('Max OTP attempts reached:', state.otpAttempts);
+                    return;
+                }
+                if (Date.now() - state.otpSentTime > state.otpValidDuration) {
+                    errorDiv.textContent = 'OTP has expired. Please resend OTP.';
+                    console.warn('OTP expired:', { sentTime: state.otpSentTime, currentTime: Date.now() });
+                    return;
+                }
+                state.otpAttempts++;
+                showTypingIndicator();
+                try {
+                    const success = await verifyOtp(state.data.number, value);
+                    removeTypingIndicator();
+                    if (success) {
+                        addUserMessage('****'); // Mask OTP for security
+                        addBotMessage('OTP verified successfully.');
+                        state.isOtpVerified = true; // Track verification state
+                    } else {
+                        errorDiv.textContent = `Invalid OTP. ${state.maxOtpAttempts - state.otpAttempts} attempts remaining.`;
+                        console.warn('Invalid OTP attempt:', state.otpAttempts);
+                        return;
+                    }
+                } catch (error) {
+                    removeTypingIndicator();
+                    errorDiv.textContent = `OTP verification failed: ${error.message}`;
+                    console.error('Verification error displayed:', error.message);
+                    return;
+                }
+            } else if (field === 'number' && !state.isOtpSent) {
+                showTypingIndicator();
+                try {
+                    const success = await sendOtp(value);
+                    removeTypingIndicator();
+                    if (!success) {
+                        errorDiv.textContent = 'Failed to send OTP. Please try again.';
+                        console.warn('OTP send failed');
+                        return;
+                    }
+                    addBotMessage('OTP sent successfully to your phone number.');
+                    state.isOtpSent = true;
+                } catch (error) {
+                    removeTypingIndicator();
+                    errorDiv.textContent = `Failed to send OTP: ${error.message}`;
+                    console.error('Send OTP error:', error.message);
+                    return;
+                }
+            } else {
+                addUserMessage(value);
+            }
+
+            if (field === 'number') {
+                state.data.user_id = value; // Use phone number as user_id
+            }
+
+            proceedToNextStep();
         }
 
         async function sendChatMessage(message) {

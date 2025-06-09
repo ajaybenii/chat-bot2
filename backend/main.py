@@ -21,7 +21,7 @@ app.add_middleware(
     allow_origins=[
         "http://127.0.0.1:5500",
         "http://localhost:5500",
-        "https://chat-bot2-xy11.onrender.com"  # Added frontend domain
+        "https://chat-bot2-xy11.onrender.com"  # Frontend domain
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
@@ -133,11 +133,13 @@ async def chat_with_gemini(request: ChatRequest, req: Request):
         )
 
         content = response.text.replace("```html", "").replace("```", "")
-        return {"status": "success", "response": content}
+        headers = {"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
+        return JSONResponse(content={"status": "success", "response": content}, headers=headers)
 
     except Exception as e:
         print(f"Chat Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error generating chat response: {str(e)}")
+        headers = {"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
+        raise HTTPException(status_code=500, detail=f"Error generating chat response: {str(e)}", headers=headers)
 
 # OTP send endpoint
 @app.options("/api/otp/send")
@@ -163,22 +165,27 @@ async def proxy_send_otp(request: OtpRequest, req: Request):
                 headers={"Content-Type": "application/json"}
             )
         print(f"OTP Send Output: Status={response.status_code}, Response={response.text}")
-        content_type = response.headers.get("Content-Type", "")
+        headers = {"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
         if response.status_code == 200:
             return JSONResponse(
                 content={"message": "OTP sent Successfully on mobile"},
                 status_code=200,
-                headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
+                headers=headers
             )
         else:
             return JSONResponse(
                 content={"message": response.text or "Failed to send OTP"},
                 status_code=response.status_code,
-                headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
+                headers=headers
             )
     except httpx.RequestError as e:
         print(f"OTP Send Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Request failed: {str(e)}")
+        headers = {"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
+        return JSONResponse(
+            content={"message": f"Request failed: {str(e)}"},
+            status_code=500,
+            headers=headers
+        )
 
 # OTP verify endpoint
 @app.options("/api/otp/verify")
@@ -194,6 +201,8 @@ async def options_otp_verify(request: Request):
 @app.post("/api/otp/verify")
 async def proxy_verify_otp(request: OtpVerify, req: Request):
     try:
+        print(f"Request Headers: {req.headers}")
+        print(f"Request Origin: {req.headers.get('origin')}")
         print(f"OTP Verify Input: {request.dict()}")
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -202,26 +211,62 @@ async def proxy_verify_otp(request: OtpVerify, req: Request):
                 headers={"Content-Type": "application/json"}
             )
         print(f"OTP Verify Output: Status={response.status_code}, Response={response.text}")
-        content_type = response.headers.get("Content-Type", "")
         headers = {"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
-        if "application/json" in content_type.lower():
-            return JSONResponse(content=response.json(), status_code=response.status_code, headers=headers)
+        content_type = response.headers.get("Content-Type", "")
+        
+        if response.status_code == 200:
+            if "application/json" in content_type.lower():
+                json_response = response.json()
+                if json_response.get("data", {}).get("userExists", False):
+                    return JSONResponse(content=json_response, status_code=200, headers=headers)
+                else:
+                    return JSONResponse(
+                        content={"message": json_response.get("message", "Verification failed: User does not exist")},
+                        status_code=400,
+                        headers=headers
+                    )
+            else:
+                return JSONResponse(
+                    content={"message": response.text or "Verification success (non-JSON response)"},
+                    status_code=200,
+                    headers=headers
+                )
         else:
-            return JSONResponse(
-                content={"message": response.text or "Verification success"},
-                status_code=response.status_code,
-                headers=headers
-            )
+            if "application/json" in content_type.lower():
+                return JSONResponse(
+                    content={"message": response.json().get("message", "Verification failed")},
+                    status_code=response.status_code,
+                    headers=headers
+                )
+            else:
+                return JSONResponse(
+                    content={"message": response.text or "Verification failed"},
+                    status_code=response.status_code,
+                    headers=headers
+                )
     except httpx.HTTPStatusError as e:
         print(f"OTP Verify HTTP Error: Status={e.response.status_code}, Response={e.response.text}")
         headers = {"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
         try:
-            return JSONResponse(status_code=e.response.status_code, content=e.response.json(), headers=headers)
-        except Exception:
-            return JSONResponse(status_code=e.response.status_code, content={"detail": e.response.text}, headers=headers)
+            return JSONResponse(
+                status_code=e.response.status_code,
+                content={"message": e.response.json().get("message", "Verification failed")},
+                headers=headers
+            )
+        except ValueError:
+            return JSONResponse(
+                status_code=e.response.status_code,
+                content={"message": e.response.text or "Verification failed"},
+                headers=headers
+            )
     except httpx.RequestError as e:
         print(f"OTP Verify Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error verifying OTP: {str(e)}")
+        headers = {"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Error verifying OTP: {str(e)}"},
+            headers=headers
+        )
 
 # Submit endpoint
 @app.post("/submit")
@@ -231,13 +276,19 @@ async def submit(data: PropertyData, req: Request):
         data_dict["created_at"] = datetime.utcnow().isoformat()
         await collection.insert_one(data_dict)
         print(f"Submit Data: {data_dict}")
+        headers = {"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
         return JSONResponse(
             content={"status": "success", "message": "Data submitted successfully"},
-            headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
+            headers=headers
         )
     except Exception as e:
         print(f"Submit Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        headers = {"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
+        return JSONResponse(
+            content={"message": f"Error submitting data: {str(e)}"},
+            status_code=500,
+            headers=headers
+        )
 
 # Ping DB endpoint
 @app.get("/pingdb")
@@ -245,13 +296,15 @@ async def ping_db(req: Request):
     try:
         await db.command("ping")
         print("MongoDB ping successful")
+        headers = {"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
         return JSONResponse(
             content={"message": "MongoDB connection is working ✅"},
-            headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
+            headers=headers
         )
     except Exception as e:
         print(f"DB ping failed: {str(e)}")
+        headers = {"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
         return JSONResponse(
             content={"message": f"DB ping failed: {str(e)}"},
-            headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
+            headers=headers
         )
