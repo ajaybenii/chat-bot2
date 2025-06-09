@@ -4,3 +4,4 @@ motor
 python-dotenv
 # Optional (only during development)
 httpx            # for testing async routes
+google-genai
