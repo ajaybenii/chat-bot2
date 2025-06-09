@@ -1,0 +1,74 @@
+# .gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+build/
+dist/
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Streamlit
+.streamlit/
+
+# Sensitive files
+sqy-prod.json
+.env
+*.pem
+*.key
+*.cert
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# Documentation and miscellaneous
+*.md
+*.rst
+*.txt
+!requirements.txt
+!Procfile
+!.gitignore
+
+# Data and output files
+*.csv
+*.xlsx
+*.docx
+*.pdf
+*.json
+*.sql
+*.db
+*.sqlite
+*.sqlite3
+
+# Node.js (if applicable)
+node_modules/
+npm-debug.log
