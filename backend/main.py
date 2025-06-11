@@ -46,7 +46,7 @@ client = AsyncIOMotorClient(
     w="majority"
 )
 
-db = client["propertylst"]
+db = client["squareyards"]
 collection = db["property_listing"]
 chat_history_collection = db["chat_history"]
 
@@ -58,6 +58,7 @@ gemini_client = genai.Client(
     project='sqy-prod',
     location='us-central1'
 )
+
 
 gemini_tools = [types.Tool(google_search=types.GoogleSearch())]
 
