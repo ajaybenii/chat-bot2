@@ -33,8 +33,8 @@ app.add_middleware(
 # MongoDB connection
 mongo_uri = os.getenv("MONGO_URI")
 client = AsyncIOMotorClient(mongo_uri)
-db = client["squareyards"]
-collection = db["property_listings"]
+db = client["propertylst"]
+collection = db["property_listing"]
 chat_history_collection = db["chat_history"]
 
 # Initialize Gemini client

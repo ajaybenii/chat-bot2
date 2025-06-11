@@ -764,19 +764,38 @@
                         }
 
                         input.focus();
-                    } else if (step.input === 'otp') {
+                    } 
+                    else if (step.input === 'otp') {
                         const otpContainer = document.createElement('div');
                         otpContainer.className = 'otp-container';
 
                         const inputs = [];
                         for (let i = 0; i < 4; i++) {
                             const input = document.createElement('input');
-                            input.type = 'text';
+                            input.type = 'number'; // Enforce numeric input
                             input.className = 'otp-input';
                             input.maxLength = 1;
                             input.pattern = '[0-9]';
+                            input.inputMode = 'numeric'; // Numeric keyboard for mobile
                             input.setAttribute('aria-label', `OTP digit ${i + 1}`);
                             input.classList.toggle('dark-mode', chatbotWindow.classList.contains('dark-mode'));
+                            input.addEventListener('input', (e) => {
+                                e.target.value = e.target.value.replace(/[^0-9]/g, ''); // Ensure only numeric input
+                                if (e.target.value.length === 1 && i < 3) {
+                                    inputs[i + 1].focus();
+                                }
+                                const otp = inputs.map(inp => inp.value).join('');
+                                if (otp.length === 4) {
+                                    clearInterval(state.timerInterval);
+                                    timerSpan.textContent = '';
+                                    handleTextInput(otp, step.field, step.validate, errorDiv);
+                                }
+                            });
+                            input.addEventListener('keydown', (e) => {
+                                if (e.key === 'Backspace' && input.value === '' && i > 0) {
+                                    inputs[i - 1].focus();
+                                }
+                            });
                             otpContainer.appendChild(input);
                             inputs.push(input);
                         }
@@ -815,27 +834,9 @@
                             }
                         });
 
-                        inputs.forEach((input, index) => {
-                            input.addEventListener('input', () => {
-                                if (input.value.length === 1 && index < 3) {
-                                    inputs[index + 1].focus();
-                                }
-                                const otp = inputs.map(inp => inp.value).join('');
-                                if (otp.length === 4) {
-                                    clearInterval(state.timerInterval);
-                                    timerSpan.textContent = '';
-                                    handleTextInput(otp, step.field, step.validate, errorDiv);
-                                }
-                            });
-                            input.addEventListener('keydown', (e) => {
-                                if (e.key === 'Backspace' && input.value === '' && index > 0) {
-                                    inputs[index - 1].focus();
-                                }
-                            });
-                        });
-
                         inputs[0].focus();
                     }
+
                 }, 300);
             }, 800);
         }
