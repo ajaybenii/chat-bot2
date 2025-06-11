@@ -10,6 +10,7 @@ import httpx
 from starlette.responses import Response
 from google import genai
 from google.genai import types
+import asyncio
 
 load_dotenv()
 
@@ -30,9 +31,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# MongoDB connection
+# MongoDB connection with improved settings
 mongo_uri = os.getenv("MONGO_URI")
-client = AsyncIOMotorClient(mongo_uri)
+print(f"MongoDB URI (masked): {mongo_uri[:20]}...{mongo_uri[-20:] if len(mongo_uri) > 40 else mongo_uri}")
+
+# Create MongoDB client with better timeout settings
+client = AsyncIOMotorClient(
+    mongo_uri,
+    serverSelectionTimeoutMS=10000,  # 10 seconds
+    connectTimeoutMS=10000,          # 10 seconds
+    socketTimeoutMS=10000,           # 10 seconds
+    maxPoolSize=10,
+    retryWrites=True,
+    w="majority"
+)
+
 db = client["propertylst"]
 collection = db["property_listing"]
 chat_history_collection = db["chat_history"]
@@ -82,22 +95,42 @@ async def get_user_id(request: Request, chat_request: ChatRequest = None) -> str
         print("Warning: No X-User-Phone header or user_id provided, using anonymous user_id")
     return phone_number
 
-# Update chat history
+# Update chat history with retry mechanism
 async def update_chat_history(user_id: str, message: str):
-    history = await chat_history_collection.find_one({"user_id": user_id})
-    if history:
-        questions = history.get("questions", [])
-        questions.append({"question": message, "timestamp": datetime.utcnow().isoformat()})
-        if len(questions) > 10:
-            questions = questions[-10:]
-        await chat_history_collection.update_one({"user_id": user_id}, {"$set": {"questions": questions}})
-    else:
-        await chat_history_collection.insert_one({"user_id": user_id, "questions": [{"question": message, "timestamp": datetime.utcnow().isoformat()}]})
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            history = await chat_history_collection.find_one({"user_id": user_id})
+            if history:
+                questions = history.get("questions", [])
+                questions.append({"question": message, "timestamp": datetime.utcnow().isoformat()})
+                if len(questions) > 10:
+                    questions = questions[-10:]
+                await chat_history_collection.update_one({"user_id": user_id}, {"$set": {"questions": questions}})
+            else:
+                await chat_history_collection.insert_one({"user_id": user_id, "questions": [{"question": message, "timestamp": datetime.utcnow().isoformat()}]})
+            break
+        except Exception as e:
+            print(f"Chat history update attempt {attempt + 1} failed: {str(e)}")
+            if attempt == max_retries - 1:
+                print("Failed to update chat history after all retries")
+            else:
+                await asyncio.sleep(1)  # Wait 1 second before retry
 
-# Get chat history
+# Get chat history with retry mechanism
 async def get_chat_history(user_id: str) -> list:
-    history = await chat_history_collection.find_one({"user_id": user_id})
-    return history.get("questions", []) if history else []
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            history = await chat_history_collection.find_one({"user_id": user_id})
+            return history.get("questions", []) if history else []
+        except Exception as e:
+            print(f"Chat history retrieval attempt {attempt + 1} failed: {str(e)}")
+            if attempt == max_retries - 1:
+                print("Failed to get chat history after all retries, returning empty list")
+                return []
+            else:
+                await asyncio.sleep(1)  # Wait 1 second before retry
 
 # Gemini chat endpoint
 @app.post("/api/chat")
@@ -278,34 +311,74 @@ async def proxy_verify_otp(request: OtpVerify, req: Request):
             headers=headers
         )
 
+@app.options("/submit")
+async def options_submit(request: Request):
+    origin = request.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+    print(f"OPTIONS /submit Origin: {origin}")
+    return Response(status_code=200, headers={
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Credentials": "true"
+    })
+
 @app.post("/submit")
 async def submit(data: PropertyData, req: Request):
-    try:
-        data_dict = data.dict()
-        data_dict["created_at"] = datetime.utcnow().isoformat()
-        await collection.insert_one(data_dict)
-        print(f"Submit Data: {data_dict}")
-        
-        origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
-        headers = {"Access-Control-Allow-Origin": origin}
-        return JSONResponse(
-            content={"status": "success", "message": "Data submitted successfully"},
-            headers=headers
-        )
-    except Exception as e:
-        print(f"Submit Error: {str(e)}")
-        origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
-        headers = {"Access-Control-Allow-Origin": origin}
-        return JSONResponse(
-            content={"message": f"Error submitting data: {str(e)}"},
-            status_code=500,
-            headers=headers
-        )
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            print(f"Submit attempt {attempt + 1}: {data.dict()}")
+            
+            data_dict = data.dict()
+            data_dict["created_at"] = datetime.utcnow().isoformat()
+            
+            # Use asyncio.wait_for to add a timeout
+            await asyncio.wait_for(
+                collection.insert_one(data_dict),
+                timeout=10.0  # 10 second timeout
+            )
+            
+            print(f"Submit Data successful: {data_dict}")
+            
+            origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+            headers = {"Access-Control-Allow-Origin": origin}
+            return JSONResponse(
+                content={"status": "success", "message": "Data submitted successfully"},
+                headers=headers
+            )
+            
+        except asyncio.TimeoutError:
+            print(f"Submit attempt {attempt + 1} timed out")
+            if attempt == max_retries - 1:
+                origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+                headers = {"Access-Control-Allow-Origin": origin}
+                return JSONResponse(
+                    content={"message": "Database timeout - please try again later"},
+                    status_code=503,
+                    headers=headers
+                )
+            await asyncio.sleep(2)  # Wait 2 seconds before retry
+            
+        except Exception as e:
+            print(f"Submit attempt {attempt + 1} failed: {str(e)}")
+            if attempt == max_retries - 1:
+                origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+                headers = {"Access-Control-Allow-Origin": origin}
+                return JSONResponse(
+                    content={"message": f"Error submitting data: {str(e)}"},
+                    status_code=500,
+                    headers=headers
+                )
+            await asyncio.sleep(2)  # Wait 2 seconds before retry
 
 @app.get("/pingdb")
 async def ping_db(req: Request):
     try:
-        await db.command("ping")
+        # Use asyncio.wait_for to add a timeout
+        await asyncio.wait_for(
+            db.command("ping"),
+            timeout=5.0  # 5 second timeout
+        )
         print("MongoDB ping successful")
         
         origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
@@ -314,12 +387,22 @@ async def ping_db(req: Request):
             content={"message": "MongoDB connection is working ✅"},
             headers=headers
         )
+    except asyncio.TimeoutError:
+        print("DB ping timed out")
+        origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+        headers = {"Access-Control-Allow-Origin": origin}
+        return JSONResponse(
+            content={"message": "DB ping timed out - connection issues"},
+            status_code=503,
+            headers=headers
+        )
     except Exception as e:
         print(f"DB ping failed: {str(e)}")
         origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
         headers = {"Access-Control-Allow-Origin": origin}
         return JSONResponse(
             content={"message": f"DB ping failed: {str(e)}"},
+            status_code=503,
             headers=headers
         )
 
@@ -332,3 +415,19 @@ async def health_check():
 @app.get("/")
 async def root():
     return {"message": "SquareYards ChatBot Backend API", "status": "running"}
+
+# Startup event to check database connection
+@app.on_event("startup")
+async def startup_event():
+    try:
+        await asyncio.wait_for(db.command("ping"), timeout=10.0)
+        print("✅ MongoDB connection established successfully on startup")
+    except Exception as e:
+        print(f"❌ MongoDB connection failed on startup: {str(e)}")
+        print("Application will continue but database operations may fail")
+
+# Shutdown event to close database connection
+@app.on_event("shutdown")
+async def shutdown_event():
+    client.close()
+    print("MongoDB connection closed")
