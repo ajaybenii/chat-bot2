@@ -6,14 +6,13 @@
     <title>SquareYards Property Listing Chatbot</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        /* Removed transform and opacity transitions for #chatbot-window */
         *,::before,::after{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;outline:none}
         body{font-family:'Poppins',sans-serif;margin:0;background-color:#f4f4f4}
         body,ul,ol,li,h1,h2,h3,h4,h5,h6,figure,p,strong{padding:0;margin:0;list-style:none}
         #chatbot-icon{position:fixed;bottom:20px;right:20px;width:60px;height:60px;background:linear-gradient(135deg,#333,#555);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 8px #0000004d;z-index:1000;transition:transform 0.3s ease;animation:pulse 2s infinite ease-in-out}
         #chatbot-icon::before{font-size:24px;color:#fff}
         #chatbot-icon.closed::before{content:'💬'}
-        #chatbot-icon.open::before{content:'▼'}
+        #chatbot-icon.open::before{content:'X'}
         #chatbot-icon:hover{animation:bounce 0.4s ease}
         #chatbot-icon:focus{outline:2px solid #7be0b6}
         @keyframes pulse {
@@ -33,12 +32,11 @@
         @media (max-width: 600px) {
             .chatbot-popup{right:10px;font-size:11px;padding:8px 12px}
         }
-        /* #chatbot-window{position:fixed;bottom:80px;right:80px;width:375px;max-height:488px;background:linear-gradient(145deg,#fff,#f7f7f7);border-radius:50px;box-shadow:0 6px 12px #0003;display:none;flex-direction:column;z-index:1000} */
         #chatbot-window{position:fixed;bottom:65px;right:85px;width:375px;background-color:#fff;border-radius:10px;box-shadow:0 4px 10px #0003;display:none;flex-direction:column;z-index:1000}
         #chatbot-window.open{display:flex}
         #chatbot-window.dark-mode{background:linear-gradient(145deg,#2a2a2a,#333);color:#fff}
         @media (max-width: 600px) {
-            #chatbot-window{width:100%;max-height:100%;bottom:0;right:0;border-radius:0}
+            #chatbot-window{width:100%;height:100%;bottom:0;right:0;border-radius:0}
         }
         .chatbot-header{padding:15px;height:78px;border-radius:12px 12px 0 0;display:flex;gap:10px;background:linear-gradient(135deg,#333,#555);align-items:center}
         .chatbot-header .company-profile{display:flex;flex-direction:column;gap:8px}
@@ -53,7 +51,7 @@
         .animation-toggle{position:absolute;top:15px;right:10px;background:none;border:none;color:#fff;font-size:18px;cursor:pointer;transition:transform 0.2s ease}
         .animation-toggle:hover{transform:scale(1.1)}
         .animation-toggle:focus{outline:2px solid #7be0b6}
-        .chatbot-body{flex:1;padding:15px;overflow-y:auto;background:#f7f4ff;max-height:300px}
+        .chatbot-body{flex:1;padding:0px;overflow-y:auto;background:#f7f4ff;max-height:300px}
         .chatbot-body.dark-mode{background:#222}
         .chatbot-body::-webkit-scrollbar{width:8px}
         .chatbot-body::-webkit-scrollbar-thumb{background-color:#333;border-radius:4px}
@@ -104,6 +102,34 @@
         }
         .bot-message{padding:15px 20px;background:#fff;border-radius:0 20px 20px 20px;display:inline-flex;flex-direction:column;gap:14px;color:#333}
         .bot-message.dark-mode{background:#444;color:#fff}
+        .bot-message.final-message {
+            font-weight: 600;
+            background: #e6f0fa;
+            border-left: 3px solid #7be0b6;
+        }
+        .bot-message.final-message.dark-mode {
+            background: #444;
+            border-left-color: #7be0b6;
+        }
+        .bot-message a {
+            color: #7be0b6;
+            font-weight: 600;
+            text-decoration: underline;
+            transition: color 0.2s ease;
+        }
+        .bot-message a:hover {
+            color: #4a9c7a;
+        }
+        .bot-message a:focus {
+            outline: 2px solid #7be0b6;
+            outline-offset: 2px;
+        }
+        .bot-message a.dark-mode {
+            color: #7be0b6;
+        }
+        .bot-message a.dark-mode:hover {
+            color: #9ef2c8;
+        }
         .user-message{background:linear-gradient(135deg,#333,#555);color:#fff;font-weight:700;padding:10px;border-radius:10px 10px 0 10px;margin-left:auto}
         .selected-option{background:linear-gradient(135deg,#333,#555);font-weight:700;border:1px solid #333;padding:8px 12px}
         .reminder-message{background-color:#fff3cd;color:#856404;padding:15px 20px;font-style:italic;border-radius:0 20px 20px 20px}
@@ -163,7 +189,7 @@
             .chatbot-input .clear-chat-btn{font-size:12px}
         }
         .error-message{color:#d32f2f;font-size:11px;margin-top:5px;opacity:0;animation:fadeIn 0.3s ease forwards}
-        .final-message-container{display:flex;align-items:center;background:#e6f7fa;border:1px solid #b3e5fc;border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:#333}
+        .final-message-container{display:flex;align-items:center;background:#f0f8ff;border:1px solid #b3e5fc;border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:#333}
         .final-message-container.dark-mode{background:#2e4b5e;border-color:#4b6b7d;color:#fff}
         @media (max-width: 600px) {
             .final-message-container{font-size:12px}
@@ -176,9 +202,14 @@
         }
         .online-dot{width:10px;height:10px;background-color:#2e7d32;border-radius:50%;margin-right:5px}
         .online-dot.dark-mode{background-color:#7be0b6}
+        /* Updated Quiz-specific styles */
+        
     </style>
 </head>
 <body>
+    <!-- <audio id="mcqSound" src="/audio/mixkit-game-click-1114.wav" preload="auto"></audio> -->
+    <audio id="chatSound" src="/audio/chatbot-sound.mp3" preload="auto"></audio>
+    <audio id="errorSound" src="/audio/error.mp3" preload="auto"></audio>
     <div id="chatbot-icon" role="button" aria-label="Open chatbot" tabindex="0"></div>
     <div class="chatbot-popup" role="button" aria-label="List your property" tabindex="0" aria-hidden="true"></div>
     <div id="chatbot-window" role="dialog" aria-label="Property Listing Chatbot">
@@ -188,7 +219,7 @@
                 <p>Property Listing Assistant</p>
                 <span class="status">Online</span>
             </div>
-            <button class="close-btn" aria-label="Close chatbot">×</button>
+            <button class="close-btn" aria-label="Close chatbot"></button>
             <button class="theme-toggle" aria-label="Toggle theme">🌙</button>
             <button class="animation-toggle" aria-label="Change typing animation">🔄</button>
         </div>
@@ -218,7 +249,8 @@
                 city: '',
                 name: '',
                 number: '',
-                otp: ''
+                otp: '',
+                user_id: ''
             },
             hasStarted: false,
             reminderTimeout: null,
@@ -231,17 +263,18 @@
             resendCooldown: 30000,
             lastOtpSent: null,
             timerInterval: null,
-            isLeadSubmitted: false
+            isLeadSubmitted: false,
+            bypassOtp: false
         };
 
-        const chatbotIcon = document.getElementById('chatbot-icon');
+        const chatbotIcon = document.querySelector('#chatbot-icon');
         const chatbotPopup = document.querySelector('.chatbot-popup');
-        const chatbotWindow = document.getElementById('chatbot-window');
-        const chatbotBody = document.getElementById('chatbot-body');
-        const chatbotInput = document.getElementById('chatbot-input');
+        const chatbotWindow = document.querySelector('#chatbot-window');
+        const chatbotBodyDiv = document.querySelector('#chatbot-body');
+        const chatbotInputDiv = document.querySelector('#chatbot-input');
         const closeBtn = document.querySelector('.close-btn');
-        const themeToggle = document.querySelector('.theme-toggle');
-        const animationToggle = document.querySelector('.animation-toggle');
+        const themeToggleBtn = document.querySelector('.theme-toggle');
+        const animationToggleBtn = document.querySelector('.animation-toggle');
 
         function debounce(func, wait) {
             let timeout;
@@ -283,17 +316,17 @@
             chatbotPopup.setAttribute('aria-hidden', 'true');
         }
 
-        themeToggle.addEventListener('click', () => {
+        themeToggleBtn.addEventListener('click', () => {
             const isDarkMode = chatbotWindow.classList.toggle('dark-mode');
-            chatbotBody.classList.toggle('dark-mode');
-            chatbotInput.classList.toggle('dark-mode');
-            themeToggle.textContent = isDarkMode ? '☀️' : '🌙';
+            chatbotBodyDiv.classList.toggle('dark-mode');
+            chatbotInputDiv.classList.toggle('dark-mode');
+            themeToggleBtn.textContent = isDarkMode ? '☀️' : '🌙';
             document.querySelectorAll('.bot-message, .typing-indicator, .reminder-message, .final-message-container, .online-status, .online-dot, .input-wrapper input, .otp-input, .otp-timer').forEach(item => {
                 item.classList.toggle('dark-mode', isDarkMode);
             });
         });
 
-        animationToggle.addEventListener('click', () => {
+        animationToggleBtn.addEventListener('click', () => {
             const currentIndex = animationStyles.indexOf(currentAnimationStyle);
             currentAnimationStyle = animationStyles[(currentIndex + 1) % animationStyles.length];
             removeTypingIndicator();
@@ -328,7 +361,7 @@
 
         async function sendOtp(number) {
             try {
-                const response = await fetch('https://chat-bot2-backend.onrender.com/api/otp/send', {
+                const response = await fetch('http://127.0.0.1:8000/api/otp/send', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -355,8 +388,11 @@
         }
 
         async function verifyOtp(number, otp) {
+            if (state.bypassOtp) {
+                return true; // Simulate successful OTP verification for testing
+            }
             try {
-                const response = await fetch('https://chat-bot2-backend.onrender.com/api/otp/verify', {
+                const response = await fetch('http://127.0.0.1:8000/api/otp/verify', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -384,12 +420,12 @@
 
         async function sendChatMessage(message) {
             try {
-                const response = await fetch('https://chat-bot2-backend.onrender.com/api/chat', {
+                const response = await fetch('http://127.0.0.1:8000/api/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'X-User-Phone': state.data.user_id || 'anonymous' // Send user_id in header
+                        'X-User-Phone': state.data.user_id || 'anonymous'
                     },
                     body: JSON.stringify({
                         message: message,
@@ -408,6 +444,8 @@
                 return 'Sorry, something went wrong. Please try again.';
             }
         }
+
+        
 
         function startOtpTimer(resendButton, timerSpan) {
             let timeLeft = 30;
@@ -477,22 +515,17 @@
                 chatbotIcon.classList.remove('closed');
                 chatbotIcon.classList.add('open');
                 stopPopupInterval();
-                chatbotInput.querySelector('input, button')?.focus();
+                chatbotInputDiv.querySelector('input, button')?.focus();
             }
         }
 
         async function startChat() {
-            // Show first message instantly
             addBotMessage('👋 Hi! Let’s list your property on SquareYards. 🚀');
-
-            // Fetch city list in background
             if (!cityListFetched) {
                 fetchCityList().then(() => {
                     cityListFetched = true;
                 });
             }
-
-            // Proceed to first step immediately
             showStep(0);
         }
 
@@ -528,7 +561,7 @@
                 reminder: '⏳ Are you still there? Please select your city from the dropdown.'
             },
             {
-                message: '✨ To get your property listed quickly and hassle-free, our expert agent is ready to assist you personally! Please share your name (only alphabets, max 20 characters). 📝',
+                message: '✨ To get your property listed quickly and hassle-free, our expert agent is ready to assist you personally! Please share your name.📝',
                 input: 'text',
                 placeholder: 'Enter your full name',
                 field: 'name',
@@ -557,7 +590,7 @@
                 reminder: '⏳ Are you still there? Please enter the OTP.'
             }
         ];
-
+            
         function showStep(stepIndex) {
             state.step = stepIndex;
             state.reminderShown = false;
@@ -567,7 +600,7 @@
                 removeTypingIndicator();
                 addBotMessage(step.message);
                 setTimeout(() => {
-                    chatbotInput.innerHTML = '';
+                    chatbotInputDiv.innerHTML = '';
                     clearReminderTimeout();
                     if (stepIndex !== 5) {
                         state.reminderTimeout = setTimeout(() => {
@@ -589,7 +622,7 @@
                             button.className = index === 0 ? 'default' : 'secondary';
                             buttonsDiv.appendChild(button);
                         });
-                        chatbotInput.appendChild(buttonsDiv);
+                        chatbotInputDiv.appendChild(buttonsDiv);
                         buttonsDiv.querySelector('button')?.focus();
                     } else if (step.input === 'text') {
                         const inputWrapper = document.createElement('div');
@@ -618,11 +651,11 @@
                         inputWrapper.appendChild(input);
                         inputWrapper.appendChild(submitArrow);
 
-                        chatbotInput.appendChild(inputWrapper);
+                        chatbotInputDiv.appendChild(inputWrapper);
 
                         const errorDiv = document.createElement('div');
                         errorDiv.className = 'error-message';
-                        chatbotInput.appendChild(errorDiv);
+                        chatbotInputDiv.appendChild(errorDiv);
 
                         if (step.field === 'city') {
                             const dropdown = document.createElement('div');
@@ -657,6 +690,12 @@
                                             dropdown.innerHTML = '';
                                             dropdown.style.display = 'none';
                                             dropdown.classList.remove('active');
+                                            // Play chat sound
+                                            const chatSound = document.getElementById('chatSound');
+                                            if (chatSound) {
+                                                chatSound.currentTime = 0;
+                                                chatSound.play().catch(error => console.error('Chat sound play error:', error));
+                                            }
                                             handleTextInput(city, step.field, step.validate, errorDiv);
                                         });
                                         item.addEventListener('keydown', (e) => {
@@ -705,6 +744,12 @@
                                     dropdown.innerHTML = '';
                                     dropdown.style.display = 'none';
                                     dropdown.classList.remove('active');
+                                    // Play chat sound
+                                    const chatSound = document.getElementById('chatSound');
+                                    if (chatSound) {
+                                        chatSound.currentTime = 0;
+                                        chatSound.play().catch(error => console.error('Chat sound play error:', error));
+                                    }
                                     handleTextInput(input.value, step.field, step.validate, errorDiv);
                                 } else if (e.key === 'Enter') {
                                     e.preventDefault();
@@ -712,6 +757,12 @@
                                         dropdown.innerHTML = '';
                                         dropdown.style.display = 'none';
                                         dropdown.classList.remove('active');
+                                        // Play chat sound
+                                        const chatSound = document.getElementById('chatSound');
+                                        if (chatSound) {
+                                            chatSound.currentTime = 0;
+                                            chatSound.play().catch(error => console.error('Chat sound play error:', error));
+                                        }
                                         handleTextInput(input.value, step.field, step.validate, errorDiv);
                                     } else {
                                         errorDiv.textContent = 'Please select a city from the dropdown list.';
@@ -728,6 +779,12 @@
                                     dropdown.innerHTML = '';
                                     dropdown.style.display = 'none';
                                     dropdown.classList.remove('active');
+                                    // Play chat sound
+                                    const chatSound = document.getElementById('chatSound');
+                                    if (chatSound) {
+                                        chatSound.currentTime = 0;
+                                        chatSound.play().catch(error => console.error('Chat sound play error:', error));
+                                    }
                                     handleTextInput(input.value, step.field, step.validate, errorDiv);
                                 } else {
                                     errorDiv.textContent = 'Please select a city from the dropdown list.';
@@ -764,23 +821,22 @@
                         }
 
                         input.focus();
-                    } 
-                    else if (step.input === 'otp') {
+                    } else if (step.input === 'otp') {
                         const otpContainer = document.createElement('div');
                         otpContainer.className = 'otp-container';
 
                         const inputs = [];
                         for (let i = 0; i < 4; i++) {
                             const input = document.createElement('input');
-                            input.type = 'number'; // Enforce numeric input
+                            input.type = 'text';
                             input.className = 'otp-input';
                             input.maxLength = 1;
                             input.pattern = '[0-9]';
-                            input.inputMode = 'numeric'; // Numeric keyboard for mobile
+                            input.inputMode = 'numeric';
                             input.setAttribute('aria-label', `OTP digit ${i + 1}`);
                             input.classList.toggle('dark-mode', chatbotWindow.classList.contains('dark-mode'));
                             input.addEventListener('input', (e) => {
-                                e.target.value = e.target.value.replace(/[^0-9]/g, ''); // Ensure only numeric input
+                                e.target.value = e.target.value.replace(/[^0-9]/g, '');
                                 if (e.target.value.length === 1 && i < 3) {
                                     inputs[i + 1].focus();
                                 }
@@ -802,8 +858,8 @@
 
                         const errorDiv = document.createElement('div');
                         errorDiv.className = 'error-message';
-                        chatbotInput.appendChild(otpContainer);
-                        chatbotInput.appendChild(errorDiv);
+                        chatbotInputDiv.appendChild(otpContainer);
+                        chatbotInputDiv.appendChild(errorDiv);
 
                         const resendDiv = document.createElement('div');
                         resendDiv.className = 'otp-resend';
@@ -814,7 +870,7 @@
                         timerSpan.classList.toggle('dark-mode', chatbotWindow.classList.contains('dark-mode'));
                         resendDiv.appendChild(timerSpan);
                         resendDiv.appendChild(resendButton);
-                        chatbotInput.appendChild(resendDiv);
+                        chatbotInputDiv.appendChild(resendDiv);
 
                         startOtpTimer(resendButton, timerSpan);
 
@@ -836,7 +892,6 @@
 
                         inputs[0].focus();
                     }
-
                 }, 300);
             }, 800);
         }
@@ -856,26 +911,37 @@
             if (chatbotWindow.classList.contains('dark-mode')) {
                 indicator.classList.add('dark-mode');
             }
-            chatbotBody.appendChild(indicator);
-            chatbotBody.scrollTop = chatbotBody.scrollHeight;
+            chatbotBodyDiv.appendChild(indicator);
+            chatbotBodyDiv.scrollTop = chatbotBodyDiv.scrollHeight;
         }
 
         function removeTypingIndicator() {
-            const indicator = chatbotBody.querySelector('.typing-indicator');
+            const indicator = chatbotBodyDiv.querySelector('.typing-indicator');
             if (indicator) {
                 indicator.remove();
             }
         }
 
-        function addBotMessage(htmlContent, className = 'bot-message') {
+        function addBotMessage(htmlContent, className = 'bot-message', timeout = 0) {
             const message = document.createElement('div');
             message.className = `message ${className}`;
             if (chatbotWindow.classList.contains('dark-mode')) {
                 message.classList.add('dark-mode');
             }
             message.innerHTML = htmlContent;
-            chatbotBody.appendChild(message);
-            chatbotBody.scrollTop = chatbotBody.scrollHeight;
+            chatbotBodyDiv.appendChild(message);
+
+            if (timeout > 0) {
+                setTimeout(() => message.remove(), timeout);
+            }
+
+            const isScrolledToBottom = chatbotBodyDiv.scrollHeight - chatbotBodyDiv.scrollTop - chatbotBodyDiv.clientHeight < 500;
+            if (isScrolledToBottom) {
+                chatbotBodyDiv.scrollTo({
+                    top: chatbotBodyDiv.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
         }
 
         function addUserMessage(text, isSelectedOption = false) {
@@ -885,14 +951,28 @@
                 message.classList.add('selected-option');
             }
             message.textContent = text;
-            chatbotBody.appendChild(message);
-            chatbotBody.scrollTop = chatbotBody.scrollHeight;
+            chatbotBodyDiv.appendChild(message);
+
+            // Auto-scroll only if the user is near the bottom
+            const isScrolledToBottom = chatbotBodyDiv.scrollHeight - chatbotBodyDiv.scrollTop - chatbotBodyDiv.clientHeight < 300;
+            if (isScrolledToBottom) {
+                chatbotBodyDiv.scrollTo({
+                    top: chatbotBodyDiv.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
         }
 
         async function handleButtonClick(value, field) {
             clearReminderTimeout();
             state.data[field] = value;
             addUserMessage(value, true);
+            // Play chat sound
+            const chatSound = document.getElementById('chatSound');
+            if (chatSound) {
+                chatSound.currentTime = 0;
+                chatSound.play().catch(error => console.error('Chat sound play error:', error));
+            }
             proceedToNextStep();
         }
 
@@ -900,12 +980,18 @@
             const error = validate ? validate(value) : '';
             if (error) {
                 errorDiv.textContent = error;
+                // Play error sound
+                const errorSound = document.getElementById('errorSound');
+                if (errorSound) {
+                    errorSound.currentTime = 0;
+                    errorSound.play().catch(error => console.error('Error sound play error:', error));
+                }
                 return;
             }
             clearReminderTimeout();
             state.data[field] = value;
 
-            if (field === 'otp') {
+            if (field === 'otp' && !state.bypassOtp) { // Only process OTP if bypass is disabled
                 if (state.otpAttempts >= state.maxOtpAttempts) {
                     errorDiv.textContent = 'Maximum OTP attempts reached. Please resend OTP.';
                     return;
@@ -923,11 +1009,14 @@
                     return;
                 }
                 addUserMessage('****');
+            } else if (field === 'otp' && state.bypassOtp) {
+                // For testing: simulate OTP success
+                addUserMessage('****');
             } else {
                 addUserMessage(value);
             }
 
-            if (field === 'number' && !state.isOtpSent) {
+            if (field === 'number' && !state.bypassOtp) {
                 showTypingIndicator();
                 const success = await sendOtp(value);
                 removeTypingIndicator();
@@ -937,16 +1026,23 @@
                 }
                 addBotMessage('OTP sent successfully to your phone number.');
                 state.isOtpSent = true;
+            } else if (field === 'number' && state.bypassOtp) {
+                // For testing: skip OTP sending
+                state.isOtpSent = true; // Simulate OTP sent
+                state.data.user_id = value;
             }
 
-            const input = chatbotInput.querySelector('input');
-            if (input) input.value = '';
-            const otpInputs = chatbotInput.querySelectorAll('.otp-input');
-            if (otpInputs.length > 0) otpInputs.forEach(inp => inp.value = '');
-
-            // Send user_id with chat requests after number is provided
             if (field === 'number') {
-                state.data.user_id = value; // Use phone number as user_id
+                state.data.user_id = value;
+            }
+
+            // Play chat sound for name, number, or city submission
+            if (field === 'name' || field === 'number' || field === 'city') {
+                const chatSound = document.getElementById('chatSound');
+                if (chatSound) {
+                    chatSound.currentTime = 0;
+                    chatSound.play().catch(error => console.error('Chat sound play error:', error));
+                }
             }
 
             proceedToNextStep();
@@ -954,7 +1050,18 @@
 
         function proceedToNextStep() {
             if (state.step < steps.length - 1) {
-                setTimeout(() => showStep(state.step + 1), 500);
+                if (state.bypassOtp && state.step === 4) { // Step 4 is the phone number step
+                    // Simulate OTP success
+                    state.data.otp = '1234'; // Mock OTP for testing
+                    state.isOtpSent = true;
+                    state.otpAttempts = 0;
+                    clearReminderTimeout();
+                    clearInterval(state.timerInterval);
+                    addUserMessage('****'); // Mimic OTP input for user message
+                    submitToBackend(); // Skip to backend submission
+                } else {
+                    setTimeout(() => showStep(state.step + 1), 500);
+                }
             } else {
                 clearReminderTimeout();
                 clearInterval(state.timerInterval);
@@ -962,8 +1069,26 @@
             }
         }
 
+        function showFinalButtons() {
+            chatbotInputDiv.innerHTML = '';
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'buttons';
+
+            const startNewBtn = document.createElement('button');
+            startNewBtn.textContent = 'Start New Listing';
+            startNewBtn.className = 'default';
+            startNewBtn.setAttribute('aria-label', 'Start new listing');
+            startNewBtn.addEventListener('click', clearChat);
+            buttonsDiv.appendChild(startNewBtn);
+
+            chatbotInputDiv.appendChild(buttonsDiv);
+            buttonsDiv.querySelector('button')?.focus();
+        }
+
         function showChatInput() {
-            chatbotInput.innerHTML = '';
+            chatbotInputDiv.innerHTML = '';
+            
+            // Create and append input wrapper
             const inputWrapper = document.createElement('div');
             inputWrapper.className = 'input-wrapper';
 
@@ -981,18 +1106,11 @@
             inputWrapper.appendChild(input);
             inputWrapper.appendChild(submitArrow);
 
-            chatbotInput.appendChild(inputWrapper);
+            chatbotInputDiv.appendChild(inputWrapper);
 
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
-            chatbotInput.appendChild(errorDiv);
-
-            const clearChatBtn = document.createElement('button');
-            clearChatBtn.className = 'clear-chat-btn';
-            clearChatBtn.textContent = 'Start New Listing';
-            clearChatBtn.setAttribute('aria-label', 'Start new listing');
-            clearChatBtn.addEventListener('click', clearChat);
-            chatbotInput.appendChild(clearChatBtn);
+            chatbotInputDiv.appendChild(errorDiv);
 
             input.addEventListener('keypress', async (e) => {
                 if (e.key === 'Enter' && input.value.trim()) {
@@ -1018,12 +1136,25 @@
                 }
             });
 
+            // Append final buttons below input
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'buttons';
+
+            const startNewBtn = document.createElement('button');
+            startNewBtn.textContent = 'Start New Listing';
+            startNewBtn.className = 'default';
+            startNewBtn.setAttribute('aria-label', 'Start new listing');
+            startNewBtn.addEventListener('click', clearChat);
+            buttonsDiv.appendChild(startNewBtn);
+
+            chatbotInputDiv.appendChild(buttonsDiv);
+
             input.focus();
         }
 
         async function submitToBackend() {
             try {
-                const response = await fetch('https://chat-bot2-backend.onrender.com/submit', {
+                const response = await fetch('http://127.0.0.1:8000/submit', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1038,27 +1169,40 @@
                     setTimeout(() => {
                         removeTypingIndicator();
                         addBotMessage(`Thank you, ${state.data.name}! Your phone number has been verified. Our agent will contact you soon to list your property in ${state.data.city}. 🙌`);
+                        // addBotMessage('****');
                         addBotMessage(`
                             <div class="online-status">
                                 <span class="online-dot"></span>
                                 <span>Agent Online</span>
                             </div>
                             <div class="final-message-container">
-                                <img src="https://png.pngtree.com/png-vector/20220702/ourmid/pngtree-customer-service-agent-help-call-png-image_5552034.png?ixlib=rb-4.0.3&auto=format,fit=crop&w=40&h=40&q=80" alt="Agent" class="agent-image">
+                                <img src="assets/images/bot-icon-white.svg?auto=format&fit=crop&w=40&h=40&q=80" alt="Agent" class="agent-image">
                                 <div class="final-message-text">
-                                    📞 Our expert agent will call you soon to list your property in ${state.data.city} 🏠 – get started with SquareYards today! ✅
+                                    📞 Our expert will call you soon to list your property in ${state.data.city} 🏠 – get started with SquareYards today! 🚀
                                 </div>
                             </div>
                         `);
-                        addBotMessage('Feel free to ask any questions about properties or real estate in your city!');
-                        showChatInput();
+                        addBotMessage('Feel free to ask any questions about properties or real estate 🏠 in your city!');
+                        // Ensure chat input is shown after all messages
+                        setTimeout(() => {
+                            showChatInput();
+                            chatbotInputDiv.querySelector('input')?.focus();
+                        }, 300);
                     }, 800);
                 } else {
                     addBotMessage('Sorry, something went wrong. Please try again.');
+                    setTimeout(() => {
+                        showChatInput();
+                        chatbotInputDiv.querySelector('input')?.focus();
+                    }, 300);
                 }
             } catch (error) {
-                console.error('Fetch error:', error);
+                console.error('Error:', error);
                 addBotMessage('Error connecting to the server. Please try again later.');
+                setTimeout(() => {
+                    showChatInput();
+                    chatbotInputDiv.querySelector('input')?.focus();
+                }, 300);
             }
         }
 
@@ -1070,7 +1214,8 @@
                 city: '',
                 name: '',
                 number: '',
-                otp: ''
+                otp: '',
+                user_id: ''
             };
             state.hasStarted = false;
             state.reminderTimeout = null;
@@ -1082,8 +1227,8 @@
             state.isLeadSubmitted = false;
             clearReminderTimeout();
             clearInterval(state.timerInterval);
-            chatbotBody.innerHTML = '';
-            chatbotInput.innerHTML = '';
+            chatbotBodyDiv.innerHTML = '';
+            chatbotInputDiv.innerHTML = '';
             startChat();
         }
     </script>
