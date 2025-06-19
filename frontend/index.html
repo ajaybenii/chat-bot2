@@ -202,7 +202,45 @@
         }
         .online-dot{width:10px;height:10px;background-color:#2e7d32;border-radius:50%;margin-right:5px}
         .online-dot.dark-mode{background-color:#7be0b6}
-        /* Updated Quiz-specific styles */
+        
+        @media (max-width: 600px) {
+            .otp-resend button {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        }
+        .otp-resend {
+            display: flex;
+            flex-direction: row; /* Change to row to align buttons horizontally */
+            gap: 10px; /* Add spacing between buttons */
+            align-items: center;
+            justify-content: center;
+            margin-top: 8px;
+        }
+        .otp-resend button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #ccc; /* Default disabled state */
+            color: #fff;
+            cursor: not-allowed;
+            font-size: 13px;
+            transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+        }
+        .otp-resend button.enabled {
+            background: linear-gradient(135deg, #7be0b6, #4a9c7a);
+            cursor: pointer;
+        }
+        .otp-resend button.enabled:hover {
+            transform: scale(1.05);
+        }
+        .otp-resend button.secondary {
+            background: linear-gradient(135deg, #555, #777); /* Match secondary button style */
+            cursor: pointer;
+        }
+        .otp-resend button.secondary:hover {
+            transform: scale(1.05);
+        }
         
     </style>
 </head>
@@ -870,6 +908,34 @@
                         timerSpan.classList.toggle('dark-mode', chatbotWindow.classList.contains('dark-mode'));
                         resendDiv.appendChild(timerSpan);
                         resendDiv.appendChild(resendButton);
+
+                        // Add Edit Number button
+                        const editNumberButton = document.createElement('button');
+                        editNumberButton.textContent = 'Edit Number';
+                        editNumberButton.setAttribute('aria-label', 'Edit phone number');
+                        editNumberButton.className = 'secondary'; // Use secondary button style
+                        editNumberButton.addEventListener('click', () => {
+                            // Play chat sound
+                            const chatSound = document.getElementById('chatSound');
+                            if (chatSound) {
+                                chatSound.currentTime = 0;
+                                chatSound.play().catch(error => console.error('Chat sound play error:', error));
+                            }
+                            // Reset OTP-related state
+                            state.data.number = '';
+                            state.data.otp = '';
+                            state.isOtpSent = false;
+                            state.otpAttempts = 0;
+                            state.otpSentTime = null;
+                            state.lastOtpSent = null;
+                            clearInterval(state.timerInterval);
+                            clearReminderTimeout();
+                            // Navigate back to phone number step (step 4)
+                            addBotMessage('Please enter your correct phone number.');
+                            showStep(4);
+                        });
+                        resendDiv.appendChild(editNumberButton);
+
                         chatbotInputDiv.appendChild(resendDiv);
 
                         startOtpTimer(resendButton, timerSpan);
