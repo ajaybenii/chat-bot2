@@ -11,6 +11,8 @@ from pydantic import BaseModel
 from typing import List
 from fastapi import Request
 from fastapi import FastAPI, Request
+from fastapi import HTTPException
+from bson import ObjectId
 
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -221,6 +223,118 @@ async def chat_with_gemini(request: ChatRequest, req: Request):
             status_code=500,
             headers=headers
         )
+
+# Pydantic model for the property registration payload
+class PropertyRegistration(BaseModel):
+    customerName: str
+    customerEmail: str
+    customerPhoneNumber: str
+    source: str
+    countryId: int
+    requirementType: int
+    listingType: str
+    cityId: str
+    userType: str
+
+@app.options("/api/property/register")
+async def options_property_register(request: Request):
+    origin = request.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+    print(f"OPTIONS /api/property/register Origin: {origin}")
+    return Response(status_code=200, headers={
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Credentials": "true"
+    })
+
+@app.post("/api/property/register")
+async def register_property(data: PropertyRegistration, req: Request):
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            print(f"Property Registration attempt {attempt + 1}: {data.dict()}")
+            
+            # Validate data
+            if not data.customerName or len(data.customerName.strip()) < 2:
+                raise HTTPException(status_code=400, detail="Invalid customer name")
+            
+            if not re.match(r"^91-[6-9][0-9]{9}$", data.customerPhoneNumber):
+                raise HTTPException(status_code=400, detail="Invalid phone number format")
+            
+            if data.userType not in ["OWNER", "AGENT"]:
+                raise HTTPException(status_code=400, detail="Invalid user type")
+            
+            if data.listingType not in ["1", "2"]:
+                raise HTTPException(status_code=400, detail="Invalid listing type")
+            
+            # Check for duplicate phone number
+            existing = await collection.find_one({"customerPhoneNumber": data.customerPhoneNumber})
+            if existing:
+                raise HTTPException(status_code=403, detail="Phone number already registered")
+
+            data_dict = data.dict()
+            data_dict["created_at"] = datetime.utcnow().isoformat()
+            data_dict["propertyId"] = str(ObjectId())  # Generate unique propertyId
+            
+            # Insert into MongoDB
+            await asyncio.wait_for(
+                collection.insert_one(data_dict),
+                timeout=10.0
+            )
+            
+            print(f"Property Registration successful: {data_dict}")
+            
+            origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+            headers = {"Access-Control-Allow-Origin": origin}
+            return JSONResponse(
+                content={
+                    "status": 1,
+                    "message": "Successfully",
+                    "propertyDetail": {
+                        "propertyId": data_dict["propertyId"],
+                        "customerName": data_dict["customerName"],
+                        "cityId": data_dict["cityId"],
+                        "listingType": data_dict["listingType"]
+                    }
+                },
+                status_code=200,
+                headers=headers
+            )
+            
+        except HTTPException as he:
+            print(f"Property Registration attempt {attempt + 1} failed: {str(he.detail)}")
+            origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+            headers = {"Access-Control-Allow-Origin": origin}
+            return JSONResponse(
+                content={"status": 0, "message": str(he.detail)},
+                status_code=he.status_code,
+                headers=headers
+            )
+            
+        except asyncio.TimeoutError:
+            print(f"Property Registration attempt {attempt + 1} timed out")
+            if attempt == max_retries - 1:
+                origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+                headers = {"Access-Control-Allow-Origin": origin}
+                return JSONResponse(
+                    content={"status": 0, "message": "Database timeout - please try again later"},
+                    status_code=503,
+                    headers=headers
+                )
+            await asyncio.sleep(2)
+            
+        except Exception as e:
+            print(f"Property Registration attempt {attempt + 1} failed: {str(e)}")
+            if attempt == max_retries - 1:
+                origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+                headers = {"Access-Control-Allow-Origin": origin}
+                return JSONResponse(
+                    content={"status": 0, "message": f"Error registering property: {str(e)}"},
+                    status_code=500,
+                    headers=headers
+                )
+            await asyncio.sleep(2)
+
 
 
 @app.post("/api/quiz/game")
