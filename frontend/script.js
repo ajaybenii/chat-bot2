@@ -23,7 +23,7 @@ const state = {
     lastOtpSent: null,
     timerInterval: null,
     isLeadSubmitted: false,
-    bypassOtp: true // For local testing
+    bypassOtp: false // For local testing
 };
 
 // Change cityList to store objects with name and id
