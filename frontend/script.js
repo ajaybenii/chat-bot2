@@ -174,7 +174,7 @@ async function fetchCityList() {
 
 async function sendOtp(number) {
     try {
-        const response = await fetch('http://127.0.0.1:8000/api/otp/send', {
+        const response = await fetch('https://chat-bot2-backend.onrender.com/api/otp/send', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -203,7 +203,7 @@ async function sendOtp(number) {
 async function verifyOtp(number, otp) {
     if (state.bypassOtp) return true; // Simulate OTP for testing
     try {
-        const response = await fetch('http://127.0.0.1:8000/api/otp/verify', {
+        const response = await fetch('https://chat-bot2-backend.onrender.com/api/otp/verify', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -231,7 +231,7 @@ async function verifyOtp(number, otp) {
 
 async function sendChatMessage(message) {
     try {
-        const response = await fetch('http://127.0.0.1:8000/api/chat', {
+        const response = await fetch('https://chat-bot2-backend.onrender.com/api/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -985,7 +985,7 @@ async function submitToBackend() {
         console.log(headers);
         console.log('===========================');
 
-        const response = await fetch('http://127.0.0.1:8000/api/property/register', {
+        const response = await fetch('https://chat-bot2-backend.onrender.com/api/property/register', {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(payload),
