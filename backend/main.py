@@ -28,11 +28,11 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://127.0.0.1:5500",
-        "http://localhost:5500",
-        "https://chat-bot2-xy11.onrender.com",  # Your frontend domain
-        "http://localhost:3000",  # For local development
-        "https://localhost:3000"   # For local HTTPS development
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "https://www.squareyards.com",
+    "https://chat-bot2-xy11.onrender.com",
+    "https://www.squareyards.com" # Your frontend domain
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
@@ -41,7 +41,9 @@ app.add_middleware(
 
 # MongoDB connection with improved settings
 mongo_uri = os.getenv("MONGO_URI")
-print(f"MongoDB URI (masked): {mongo_uri[:20]}...{mongo_uri[-20:] if len(mongo_uri) > 40 else mongo_uri}")
+database_key = os.getenv("DataBase")
+
+# print(f"MongoDB URI (masked): {mongo_uri[:20]}...{mongo_uri[-20:] if len(mongo_uri) > 40 else mongo_uri}")
 
 # Create MongoDB client with better timeout settings
 client = AsyncIOMotorClient(
@@ -223,9 +225,8 @@ async def chat_with_gemini(request: ChatRequest, req: Request):
             status_code=500,
             headers=headers
         )
-
-# Pydantic model for the property registration payload
-class PropertyRegistration(BaseModel):
+# Pydantic model for the owner registration payload
+class OwnerRegistration(BaseModel):
     customerName: str
     customerEmail: str
     customerPhoneNumber: str
@@ -236,10 +237,10 @@ class PropertyRegistration(BaseModel):
     cityId: str
     userType: str
 
-@app.options("/api/property/register")
-async def options_property_register(request: Request):
-    origin = request.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
-    print(f"OPTIONS /api/property/register Origin: {origin}")
+@app.options("/api/SecondaryPortal/ownerRegistration")
+async def options_owner_registration(request: Request):
+    origin = request.headers.get("origin", "https://beatsdemo.squareyards.com")
+    print(f"OPTIONS /api/SecondaryPortal/ownerRegistration Origin: {origin}")
     return Response(status_code=200, headers={
         "Access-Control-Allow-Origin": origin,
         "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -247,12 +248,21 @@ async def options_property_register(request: Request):
         "Access-Control-Allow-Credentials": "true"
     })
 
-@app.post("/api/property/register")
-async def register_property(data: PropertyRegistration, req: Request):
+@app.post("/api/SecondaryPortal/ownerRegistration")
+async def register_owner(data: OwnerRegistration, request: Request):
+    # Validate API key
+    api_key = request.headers.get(database_key)
+    expected_api_key = database_key
+    if api_key != expected_api_key:
+        print("Invalid API key provided")
+        origin = request.headers.get("origin", "https://beatsdemo.squareyards.com")
+        headers = {"Access-Control-Allow-Origin": origin}
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            print(f"Property Registration attempt {attempt + 1}: {data.dict()}")
+            print(f"Owner Registration attempt {attempt + 1}: {data.dict()}")
             
             # Validate data
             if not data.customerName or len(data.customerName.strip()) < 2:
@@ -282,9 +292,9 @@ async def register_property(data: PropertyRegistration, req: Request):
                 timeout=10.0
             )
             
-            print(f"Property Registration successful: {data_dict}")
+            print(f"Owner Registration successful: {data_dict}")
             
-            origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+            origin = request.headers.get("origin", "https://beatsdemo.squareyards.com")
             headers = {"Access-Control-Allow-Origin": origin}
             return JSONResponse(
                 content={
@@ -302,8 +312,8 @@ async def register_property(data: PropertyRegistration, req: Request):
             )
             
         except HTTPException as he:
-            print(f"Property Registration attempt {attempt + 1} failed: {str(he.detail)}")
-            origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+            print(f"Owner Registration attempt {attempt + 1} failed: {str(he.detail)}")
+            origin = request.headers.get("origin", "https://beatsdemo.squareyards.com")
             headers = {"Access-Control-Allow-Origin": origin}
             return JSONResponse(
                 content={"status": 0, "message": str(he.detail)},
@@ -312,9 +322,9 @@ async def register_property(data: PropertyRegistration, req: Request):
             )
             
         except asyncio.TimeoutError:
-            print(f"Property Registration attempt {attempt + 1} timed out")
+            print(f"Owner Registration attempt {attempt + 1} timed out")
             if attempt == max_retries - 1:
-                origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+                origin = request.headers.get("origin", "https://beatsdemo.squareyards.com")
                 headers = {"Access-Control-Allow-Origin": origin}
                 return JSONResponse(
                     content={"status": 0, "message": "Database timeout - please try again later"},
@@ -324,264 +334,17 @@ async def register_property(data: PropertyRegistration, req: Request):
             await asyncio.sleep(2)
             
         except Exception as e:
-            print(f"Property Registration attempt {attempt + 1} failed: {str(e)}")
+            print(f"Owner Registration attempt {attempt + 1} failed: {str(e)}")
             if attempt == max_retries - 1:
-                origin = req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")
+                origin = request.headers.get("origin", "https://beatsdemo.squareyards.com")
                 headers = {"Access-Control-Allow-Origin": origin}
                 return JSONResponse(
-                    content={"status": 0, "message": f"Error registering property: {str(e)}"},
+                    content={"status": 0, "message": f"Error registering owner: {str(e)}"},
                     status_code=500,
                     headers=headers
                 )
             await asyncio.sleep(2)
 
-
-
-@app.post("/api/quiz/game")
-async def quiz_game(request: ChatRequest, req: Request):
-    try:
-        user_id = await get_user_id(req, request)
-        city = request.city or "Wanaparthy"
-        
-        # Check quiz state in MongoDB
-        quiz_state = await db["quiz_state"].find_one({"user_id": user_id})
-        if not quiz_state:
-            quiz_state = {
-                "user_id": user_id,
-                "city": city,
-                "attempts_left": 3,
-                "questions_asked": [],
-                "score": 0
-            }
-            await db["quiz_state"].insert_one(quiz_state)
-
-        if quiz_state["attempts_left"] <= 0:
-            return JSONResponse(
-                content={
-                    "status": "error",
-                    "message": "No attempts left. Please start a new listing.",
-                    "buttons": [
-                        {"text": "Start New Listing", "action": "start_new_listing"}
-                    ]
-                },
-                headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
-            )
-
-        # Generate 3 new unique questions
-        base_prompt = (
-            f"You are a Real-estate Quiz generator for {city}. "
-            f"Generate exactly 3 unique multiple choice questions about the real-estate market in {city}. "
-            "Each question should have exactly 4 options (A, B, C, D) and one correct answer. "
-            f"Do not repeat these questions: {', '.join(quiz_state['questions_asked']) if quiz_state['questions_asked'] else 'None'}. "
-            "Return ONLY a valid JSON array with this exact structure: "
-            '[{"question": "Your question here?", "options": ["Option A", "Option B", "Option C", "Option D"], "correct_answer": "Option A"}]. '
-            "Do not include any markdown formatting, explanations, or additional text. "
-            "Make sure the correct_answer matches exactly one of the options."
-        )
-
-        response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash-001",
-            contents=base_prompt,
-            config=types.GenerateContentConfig(
-                tools=gemini_tools,
-                max_output_tokens=2048,
-                temperature=0.3,  # Lower temperature for more consistent formatting
-            )
-        )
-
-        # Clean and parse the response
-        response_text = response.text.strip()
-        
-        # Remove any markdown formatting
-        response_text = re.sub(r'```json\s*', '', response_text)
-        response_text = re.sub(r'```\s*', '', response_text)
-        response_text = response_text.strip()
-        
-        print(f"Raw Gemini response: {response_text}")
-        
-        try:
-            questions = json.loads(response_text)
-        except json.JSONDecodeError as e:
-            print(f"JSON parsing error: {e}")
-            print(f"Response text: {response_text}")
-            
-            # Fallback: create default questions
-            questions = [
-                {
-                    "question": f"What is the average property price range in {city}?",
-                    "options": ["₹20-30 lakhs", "₹30-50 lakhs", "₹50-70 lakhs", "₹70+ lakhs"],
-                    "correct_answer": "₹30-50 lakhs"
-                },
-                {
-                    "question": f"Which area in {city} is considered prime for residential investment?",
-                    "options": ["City Center", "Outskirts", "Industrial Area", "Agricultural Zone"],
-                    "correct_answer": "City Center"
-                },
-                {
-                    "question": f"What type of properties are most in demand in {city}?",
-                    "options": ["1 BHK Apartments", "2-3 BHK Apartments", "Villas", "Commercial Spaces"],
-                    "correct_answer": "2-3 BHK Apartments"
-                }
-            ]
-        
-        # Validate questions structure
-        validated_questions = []
-        for i, q in enumerate(questions[:3]):  # Ensure only 3 questions
-            if not isinstance(q, dict):
-                continue
-                
-            question_text = q.get("question", f"Sample question {i+1} about {city} real estate?")
-            options = q.get("options", [f"Option A", f"Option B", f"Option C", f"Option D"])
-            correct_answer = q.get("correct_answer", options[0] if options else "Option A")
-            
-            # Ensure we have exactly 4 options
-            if len(options) != 4:
-                options = options[:4] if len(options) > 4 else options + [f"Option {chr(65+len(options)+i)}" for i in range(4-len(options))]
-            
-            # Ensure correct_answer is one of the options
-            if correct_answer not in options:
-                correct_answer = options[0]
-            
-            validated_questions.append({
-                "question": question_text,
-                "options": options,
-                "correct_answer": correct_answer
-            })
-        
-        # Ensure we have exactly 3 questions
-        while len(validated_questions) < 3:
-            validated_questions.append({
-                "question": f"What is a key factor to consider when buying property in {city}?",
-                "options": ["Location", "Price", "Amenities", "All of the above"],
-                "correct_answer": "All of the above"
-            })
-        
-        # Update quiz state
-        question_texts = [q["question"] for q in validated_questions]
-        updated_questions_asked = quiz_state["questions_asked"] + question_texts
-        
-        await db["quiz_state"].update_one(
-            {"user_id": user_id},
-            {"$set": {
-                "questions_asked": updated_questions_asked,
-                "current_questions": validated_questions
-            }}
-        )
-
-        return JSONResponse(
-            content={
-                "status": "success",
-                "message": f"You have {quiz_state['attempts_left']} chance(s) to get up to 50% off on our membership!",
-                "questions": validated_questions,
-                "attempts_left": quiz_state["attempts_left"]
-            },
-            headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
-        )
-
-    except Exception as e:
-        print(f"Quiz Error: {str(e)}")
-        import traceback
-        print(f"Full traceback: {traceback.format_exc()}")
-        
-        return JSONResponse(
-            content={"error": f"Error generating quiz: {str(e)}"},
-            status_code=500,
-            headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
-        )
-
-@app.post("/api/quiz/submit")
-async def submit_quiz_answers(request: QuizResponse, req: Request):
-    try:
-        user_id = request.user_id
-        quiz_state = await db["quiz_state"].find_one({"user_id": user_id})
-        
-        if not quiz_state:
-            return JSONResponse(
-                content={"status": "error", "message": "No active quiz found"},
-                status_code=404,
-                headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
-            )
-
-        # Get current questions
-        current_questions = quiz_state.get("current_questions", [])
-        
-        if not current_questions:
-            return JSONResponse(
-                content={"status": "error", "message": "No questions found for this quiz"},
-                status_code=400,
-                headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
-            )
-
-        # Verify answers
-        correct_count = 0
-        for i, user_answer in enumerate(request.answers):
-            if i < len(current_questions):
-                correct_answer = current_questions[i].get("correct_answer", "")
-                if user_answer == correct_answer:
-                    correct_count += 1
-        
-        # Update quiz state
-        new_attempts_left = quiz_state["attempts_left"] - 1
-        
-        await db["quiz_state"].update_one(
-            {"user_id": user_id},
-            {"$set": {
-                "attempts_left": new_attempts_left,
-                "score": correct_count
-            }}
-        )
-
-        if correct_count == 3:
-            # Perfect score - delete quiz state to reset
-            await db["quiz_state"].delete_one({"user_id": user_id})
-            return JSONResponse(
-                content={
-                    "status": "success",
-                    "message": "Congratulations! You got all answers correct! Buy our membership now and get up to 50% off!",
-                    "score": f"{correct_count}/3",
-                    "buttons": [
-                        {"text": "Buy Membership", "action": "buy_membership"},
-                        {"text": "Start New Listing", "action": "start_new_listing"}
-                    ]
-                },
-                headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
-            )
-        else:
-            if new_attempts_left > 0:
-                message = f"You got {correct_count}/3 correct. {new_attempts_left} chance(s) left. Try again!"
-                buttons = [
-                    {"text": "Play Quiz Again", "action": "play_quiz"},
-                    {"text": "Start New Listing", "action": "start_new_listing"}
-                ]
-                status = "retry"
-            else:
-                # No attempts left - reset quiz state
-                await db["quiz_state"].delete_one({"user_id": user_id})
-                message = f"You got {correct_count}/3 correct. No attempts left. Start a new listing to try again!"
-                buttons = [{"text": "Start New Listing", "action": "start_new_listing"}]
-                status = "failed"
-
-            return JSONResponse(
-                content={
-                    "status": status,
-                    "message": message,
-                    "score": f"{correct_count}/3",
-                    "buttons": buttons
-                },
-                headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
-            )
-
-    except Exception as e:
-        print(f"Quiz Submit Error: {str(e)}")
-        import traceback
-        print(f"Full traceback: {traceback.format_exc()}")
-        
-        return JSONResponse(
-            content={"error": f"Error submitting quiz answers: {str(e)}"},
-            status_code=500,
-            headers={"Access-Control-Allow-Origin": req.headers.get("origin", "https://chat-bot2-xy11.onrender.com")}
-        )
-    
 
 # OTP send endpoint with proper CORS handling
 @app.options("/api/otp/send")

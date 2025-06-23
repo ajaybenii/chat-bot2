@@ -173,8 +173,8 @@ body, ul, ol, li, h1, h2, h3, h4, h5, h6, figure, p, strong {
 }
 .theme-toggle {
     position: absolute;
-    top: 9px; /* Closer to top edge */
-    right: 4px; /* Top-right corner */
+    top: 7px; /* Closer to top edge */
+    right: 7px; /* Top-right corner */
     background: none;
     border: none;
     color: #fff;

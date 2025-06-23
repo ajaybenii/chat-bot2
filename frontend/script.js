@@ -304,7 +304,7 @@ function toggleChatbot() {
 }
 
 async function startChat() {
-        addBotMessage(' Hi! Let’s list your property on SquareYards. ');
+        addBotMessage('👋 Hi! Let’s list your property on SquareYards. 🚀');
         if (!cityListFetched) {
             fetchCityList().then(() => {
                 cityListFetched = true;
@@ -317,7 +317,7 @@ async function startChat() {
 
 const steps = [
     {
-        message: '👋 Are you the property owner or an agent? 🧑‍💼',
+        message: 'Are you the property owner or an agent? 🧑‍💼',
         input: 'buttons',
         options: ['Owner', 'Agent'],
         field: 'userType',
@@ -979,13 +979,14 @@ async function submitToBackend() {
         // Log request headers
         const headers = {
             'Content-Type': 'application/json',
+            'api_key': 'uAqGJ6bvNqcqsxh4TXMRHP596adeEMLVomMZywp1U0VHUeHLwHxv5jbe5Aw8=',
             'User-Agent': 'curl/7.68.0' // Mimic cURL
         };
         console.log('===== REQUEST HEADERS =====');
         console.log(headers);
         console.log('===========================');
 
-        const response = await fetch('https://chat-bot2-backend.onrender.com/api/property/register', {
+        const response = await fetch('https://beatsdemo.squareyards.com/api/SecondaryPortal/ownerRegistration', {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(payload),
@@ -1047,6 +1048,10 @@ async function submitToBackend() {
                 errorMessage += ' Please try a different phone number or contact support.';
             }
             addBotMessage(errorMessage);
+            showRestartButton();
+        } else if (response.status === 401) {
+            console.error('Unauthorized error:', result);
+            addBotMessage('Error: Invalid API key. Please contact support.');
             showRestartButton();
         } else {
             console.error('Submission failed:', { status: response.status, result });
