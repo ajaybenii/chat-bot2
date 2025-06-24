@@ -186,7 +186,7 @@ async def chat_with_gemini(request: ChatRequest, req: Request):
             "If Someone trying to ask this type of question like: where did you get all info or something other unrelevent non-real estate querys, then politely redirect to real-estate topics."
             "As the AI chatbot for Square Yards, you must exclusively represent Square Yards. Do not mention or promote any other organization in any user query."
             f"If user question related to these FAQ {Listingfaq} then give answer using provided details,"
-            "This is the Url link (https://www.squareyards.com/prime) for Prime Membership of Square Yards"
+            "This is the Url link (https://www.squareyards.com/owner-plans) for Prime Membership of Square Yards"
             "Include the following user context: {history}"
         )
 
