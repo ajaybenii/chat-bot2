@@ -196,7 +196,7 @@ async def chat_with_gemini(request: ChatRequest, req: Request):
         user_message = request.message
 
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash-001",
+            model="gemini-2.5-flash",
             contents=f"{full_prompt}\n\nUser Query: {user_message}",
             config=types.GenerateContentConfig(
                 tools=gemini_tools,
