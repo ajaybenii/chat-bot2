@@ -980,7 +980,7 @@ async function submitToBackend() {
         const headers = {
             'Content-Type': 'application/json',
             'api_key': 'uAqGJ6bvNqcqsxh4TXMRHP596adeEMLVomMZywp1U0VHUeHLwHxv5jbe5Aw8=',
-            'User-Agent': 'curl/7.68.0' // Mimic cURL
+            // 'User-Agent': 'curl/7.68.0' // Mimic cURL
         };
         console.log('===== REQUEST HEADERS =====');
         console.log(headers);
